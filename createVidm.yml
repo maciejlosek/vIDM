@@ -1,0 +1,24 @@
+---
+- name: Add binaries
+  hosts: lcm
+  gather_facts: false
+  become: yes
+
+  tasks:
+    - name: "Running role: dpc-createVidm "
+      include_role:
+        name: tmp-dpc-createVidm
+        tasks_from: vidmAddBinaries.yml
+      run_once: yes
+
+- name: Install new vIDM instance through VRSLCM
+  hosts: lcm
+  gather_facts: false
+  become: yes
+
+  tasks:
+    - name: "Running role: dpc-createVidm "
+      include_role:
+        name: tmp-dpc-createVidm
+        tasks_from: vidmCreation.yml
+      run_once: yes

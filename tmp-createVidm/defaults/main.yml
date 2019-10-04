@@ -1,0 +1,41 @@
+---
+##VARIABLES for all tasks
+
+#VRSLCM REST API
+lcmRestApiUrl: https://lcmserver/lcm/api
+lcmRestApiLoginUrl: v1/login
+
+#VRSLCM GUI REST API
+lcmGuiRestApi: https://lcmserver/lcm/gui/api
+lcmGuiRestApiSourceLink: sourceLink
+lcmGuiRestApiCreateEnvironment: action/createEnvironment
+
+#vIDM config
+vidmOvaRepoPath: "{{ imagesRepositoryPath }}"
+vidmOvaFileName: identity-manager-3.3.0.0-10084102_OVF10.ova
+vidmDestDir: /data/productlinks/vidm/3.3/
+vidmEnvironmentName: vIDM_environment
+networkName: vRealize-network
+vidmFQDN: vidmServer.vconfig.pl
+ipAdress: 192.168.10.5
+networkNetmask: 255.255.255.0
+defGateway: 192.168.10.1
+dnsServer: 192.168.10.10
+vidmEnvPassword: P@ssw0rd1234
+adminPassword:P@ssw0rd1234
+sshPassword: P@ssw0rd1234
+adminEmail: admin@vidm.com
+vidmVersion: 3.3.0
+
+#LCM credentials
+lcmAdmin: admin@localhost
+lcmAdminPassword: P@ssw0rd1234
+
+#vCenter config
+vCenterServer: VCserver
+vCenterDataCenter: VCdatacenter
+vCenterAdminUsername: administrator@vsphere.local
+VCAdminPassword: P@ssw0rd1234
+
+#AD config
+domainName: vconfig.pl

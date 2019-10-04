@@ -1,0 +1,190 @@
+---
+- name: Log in to LCM
+  uri:
+    url: "{{ lcmRestApiUrl }}/{{ lcmRestApiLoginUrl }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: yes
+    return_content: yes
+    status_code:
+      - 403
+      - 200
+    body_format: json
+    body:
+      username: "{{ lcmAdmin }}"
+      password: "{{ lcmAdminPassword }}"
+  register: resultLogin
+
+- name: Show login status
+  debug:
+    var: resultLogin.x_xenon_auth_token
+
+- name: Create new vIDM environment
+  uri:
+    url: "{{ lcmGuiRestApi }}/{{ lcmGuiRestApiCreateEnvironment }}"
+    method: POST
+    validate_certs: no
+    headers:
+      Accept: "application/json"
+      x-xenon-auth-token: "{{ resultLogin.x_xenon_auth_token }}"
+    return_content: yes
+    body_format: json
+    body:
+      "environmentId": "{{ vidmEnvironmentName }}"
+      "dataCenterId": "{{ vCenterDataCenter }}"
+      "properties": {
+        "enableTelemetry": false,
+        "defaultPassword": "{{ vidmEnvPassword }}",
+        "adminEmail": "{{ adminEmail }}"
+      }
+      "products": [
+        {
+          "productId": vidm,
+          "version": "{{ vidmVersion }}",
+          "size": small,
+          "isNew": true,
+          "nodeSize": null,
+          "numberOfNodes": 0,
+          "enableHa": false
+        }
+      ]
+      "solution": {
+        "vvdVersion": null,
+        "solutionId": null,
+        "size": null
+      }
+    status_code: 200
+  register: createVidmEnvironment
+  run_once: true
+  delegate_to: localhost
+
+-- name: Show requestID
+  debug:
+    var: createVidmEnvironment.json.requestId
+
+- name: Show environmentID
+  debug:
+    var: createVidmEnvironment.json.request.environmentId
+
+- name: Install new vIDM instance
+  uri:
+    url: "{{ lcmGuiRestApi }}/{{ lcmGuiRestApiCreateEnvironment }}/{{ createVidmEnvironment.json.requestId }}"
+    method: PATCH
+    validate_certs: no
+    headers:
+      Accept: "application/json"
+      x-xenon-auth-token: "{{ resultLogin.x_xenon_auth_token }}"
+      Content-Type: "application/json"
+    return_content: yes
+    body_format: json
+    body:
+      requestId: "{{ createVidmEnvironment.json.requestId }}"
+      requestorToken: 
+      requestType: CREATE_ENVIRONMENT
+      requestorType: GUI
+      requestState: SUBMITTED
+      numberOfSteps: 7
+      currentStep: 1
+      request:
+        requestId: 
+        environmentId: "{{ createVidmEnvironment.json.request.environmentId }}"
+        infrastructure:
+          sourceLink: "{{ createVidmEnvironment.json.request.environmentId }}"
+          properties:
+            vrniLicense: ''
+            bindPassword: ''
+            certificateId: ''
+            dataCenterName: "{{ vCenterDataCenter }}"
+            vcHostname: "{{ vCenterServer }}"
+            productLevelCertificate: 'false'
+            environmentId: "{{ createVidmEnvironment.json.request.environmentId }}"
+            masterVidmAdminUserName: ''
+            netmask: "{{ networkNetmask }}"
+            environmentName: GLOBAL_ENVIRONMENT
+            clusterName: "{{ vCenterCluster }}"
+            enableTelemetry: 'false'
+            dnsServers: "{{ dnsServer }}"
+            diskFormat: thin
+            baseDN: ''
+            ntpServer: ''
+            vcPassword: "{{ vCenterAdminPassword }}"
+            defaultPassword: "{{ vidmEnvPassword }}"
+            adminEmail: "{{ adminEmail }}"
+            adName: ''
+            __variables: ''
+            certificateChain: ''
+            masterKeyPassphrase: ''
+            datastoreName: "{{ vCenterDatastore }}"
+            resourcePoolName: ''
+            masterVidmAdminPassword: ''
+            masterVidmEnabled: ''
+            uberAdmin: ''
+            license: ''
+            privateKey: ''
+            bindDN: ''
+            vmNetwork: "{{ networkName }}"
+            masterPrivateKey: ''
+            masterVidmHostName: ''
+            groupDN: ''
+            masterVidmCloudAdminGroup: ''
+            vcUsername: "{{ vCenterAdminUsername }}"
+            domain: "{{ domainName }}"
+            timeSyncMode: ''
+            acceptEULA: 'true'
+            folderName: ''
+            keyPassphrase: "{{ vidmEnvPassword }}"
+            gateway: "{{ defGateway }}"
+            searchpath: "{{ domainName }}"
+            masterCertificateChain: ''
+        encoded: false
+        products:
+        - sourceLink: 
+          id: vidm
+          version: "{{ vidmVersion }}"
+          clusterVIP: []
+          properties:
+            privateKey: ''
+            certificateChain: ''
+            keyPassphrase: ''
+            certificateId: ''
+          nodes:
+          - sourceLink: ''
+            type: deployvidm
+            properties:
+              hostname: "{{ vidmFQDN }}"
+              rootPasswd: "{{ vidmEnvPassword }}"
+              name: "{{ vidmServer }}"
+              ipAddress: "{{ ipAdress }}"
+              adminPasswd: "{{ adminPassword }}"
+              sshPasswd: "{{ sshPassword }}"
+          contents: []
+    status_code: 200
+  register: installVidmEnvironment
+  run_once: true
+
+- debug:
+    var: installVidmEnvironment.status
+
+- name: Waiting for vIDM provisioning. It can take around 15 mins.
+  wait_for:
+    host: "{{ vidmFQDN }}"
+    port: 22
+    search_regex: OpenSSH
+    timeout: 900
+  register: vidmUpAndRunning
+  delegate_to: localhost
+- debug:
+    msg: "{{ vidmUpAndRunning }}"
+ 
+- name: Check that a vIDM page returns a status 200
+  uri:
+    url: "http://{{ vidmFQDN }}/SAAS/auth/login"
+    return_content: yes
+    validate_certs: no
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 20
+
+- debug:
+    var: result.status

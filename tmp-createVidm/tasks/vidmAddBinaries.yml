@@ -1,0 +1,49 @@
+---
+- name: Create directory
+  file:
+    path: "{{ vidmDestDir }}"
+    state: directory
+
+- name: "Copy vIDM OVA file to LCM"
+  copy:
+    src: "{{ vidmOvaRepoPath }}/{{ vidmOvaFileName }}"
+    dest: "{{ vidmDestDir }}{{ vidmOvaFileName }}"
+
+- name: Log in to LCM to get AuthToken
+  uri:
+    url: "{{ lcmRestApiUrl }}/{{ lcmRestApiLoginUrl }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: yes
+    return_content: yes
+    status_code:
+      - 403
+      - 200
+    body_format: json
+    body:
+      username: "{{ lcmAdmin }}
+      password: "{{ lcmAdminPassword }}"
+  register: resultLogin
+
+- name: Show login status
+  debug:
+    var: resultLogin.x_xenon_auth_token
+
+- name: Add binaries
+  uri:
+    url: "{{ lcmGuiRestApi }}/{{ lcmGuiRestApiSourceLink }}"
+    method: POST
+    validate_certs: no
+    headers:
+      Accept: "application/json"
+      x-xenon-auth-token: "{{ resultLogin.x_xenon_auth_token }}"
+    return_content: yes
+    body_format: json
+    body:      
+      productName: VMware Identity Manager
+      productId: vidm
+      productVersion: "{{ vidmVersion }}"
+      productOva: "{{ vidmOvaFileName }}"
+      sourceLocation: "{{ vidmDestDir }}"
+      productBinaryType: Install
+  register: addBinariesResult

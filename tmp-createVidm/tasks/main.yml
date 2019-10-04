@@ -1,0 +1,6 @@
+---
+## tasks file for role tmp-createVidm
+
+- import_tasks: vidmAddBinaries.yml
+
+- import_tasks: vidmCreation.yml
